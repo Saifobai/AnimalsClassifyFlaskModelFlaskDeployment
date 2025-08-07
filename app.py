@@ -1,6 +1,7 @@
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU usage
+
 import io
 import numpy as np
 from flask import Flask, request, jsonify, render_template
@@ -8,22 +9,14 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
 
-
-# Try importing ngrok for local testing (won’t be used in production)
-USE_NGROK = os.environ.get("USE_NGROK", "False").lower() == "true"
-if USE_NGROK:
-    try:
-        from pyngrok import ngrok
-    except ImportError:
-        USE_NGROK = False
-        print("⚠ pyngrok not installed — skipping Ngrok setup")
-
-# Initialize app
+# Initialize Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# Load model
+# Path to model
 MODEL_PATH = "model/model_3.keras"
-model = load_model(MODEL_PATH)
+
+# Load model once at startup with compile=False to reduce memory use
+model = load_model(MODEL_PATH, compile=False)
 
 # Class names
 class_names = [
@@ -52,12 +45,13 @@ def predict():
 
     file = request.files["image"]
     try:
+        # Process the image
         image = Image.open(io.BytesIO(file.read())).convert("RGB")
         image = image.resize((64, 64))
         image = img_to_array(image)
-        image = np.expand_dims(image, axis=0)
-        image = image / 255.0
+        image = np.expand_dims(image, axis=0) / 255.0
 
+        # Run prediction
         prediction = model.predict(image)[0]
         top_index = int(np.argmax(prediction))
         result = {
@@ -68,20 +62,11 @@ def predict():
             },
         }
         return jsonify(result)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-
-    if USE_NGROK:
-        NGROK_AUTH_TOKEN = os.environ.get(
-            "30xvzkKd16GEExWAu01vun8HLJa_39YSAXFrC1eztGYdERs8d"
-        )
-        if NGROK_AUTH_TOKEN:
-            ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-        public_url = ngrok.connect(port)
-        print(f"🚀 Ngrok tunnel open at: {public_url}")
-
     app.run(host="0.0.0.0", port=port)
