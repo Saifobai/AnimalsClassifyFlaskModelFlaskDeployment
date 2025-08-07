@@ -5,6 +5,9 @@ from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
+import tensorflow as tf
+
+print(tf.__version__)
 
 # Try importing ngrok for local testing (won’t be used in production)
 USE_NGROK = os.environ.get("USE_NGROK", "False").lower() == "true"
