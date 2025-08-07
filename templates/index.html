@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>🐾 Animal Classifier</title>
+    <style>
+      body {
+        background-color: #121212;
+        color: #e0e0e0;
+        font-family: "Segoe UI", sans-serif;
+        text-align: center;
+        padding-top: 80px;
+      }
+
+      nav {
+        background-color: #1e1e1e;
+        padding: 15px 30px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      }
+
+      .nav-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 60px;
+        flex-wrap: wrap;
+      }
+
+      .logo {
+        font-size: 22px;
+        color: #00ffff;
+        font-weight: bold;
+      }
+
+      nav ul {
+        list-style: none;
+        display: flex;
+        gap: 30px;
+        margin: 0;
+        padding: 0;
+      }
+
+      nav ul li a {
+        color: #e0e0e0;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      nav ul li a:hover {
+        color: #00ffff;
+      }
+
+      .custom-upload {
+        display: inline-block;
+        background-color: #0066ff;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      .custom-upload:hover {
+        background-color: #0044aa;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      button {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        background-color: #218838;
+      }
+
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 30px;
+        gap: 40px;
+      }
+
+      .box {
+        background-color: #1e1e1e;
+        padding: 20px;
+        border-radius: 12px;
+        max-width: 320px;
+        width: 100%;
+      }
+
+      .box h3 {
+        margin-top: 10px;
+        color: #00ffff;
+      }
+
+      #preview {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        display: none;
+      }
+
+      pre {
+        background: #0f0f0f;
+        padding: 10px;
+        border-radius: 10px;
+        text-align: left;
+        color: #00ffaa;
+      }
+
+      h1 span {
+        color: #00ffff;
+      }
+
+      h4.team {
+        margin-top: 80px;
+        color: #888;
+      }
+
+      h4.team span {
+        color: #ffd700;
+        margin: 0 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <div class="nav-content">
+        <div class="logo">🐾 Classifier</div>
+        <ul>
+          <li><a href="#top">Home</a></li>
+          <li><a href="#about">About Us</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div id="top">
+      <h1>🐾 <span>Animal Image Classifier</span></h1>
+      <p>
+        Upload an image of an animal and get predictions from our trained model.
+      </p>
+
+      <label for="imageInput" class="custom-upload">📤 Choose an Image</label>
+      <input
+        type="file"
+        id="imageInput"
+        accept="image/*"
+        onchange="previewImage(event)"
+      />
+      <br />
+      <button onclick="sendImage()">Classify</button>
+
+      <div class="container">
+        <div class="box">
+          <h3>📸 Uploaded Image</h3>
+          <img id="preview" src="#" alt="Preview" />
+        </div>
+        <div class="box" id="result-box">
+          <h3>📊 Prediction Result</h3>
+          <div id="result">
+            <p>Upload an image and click "Classify"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="about">
+      <h4 class="team">
+        Created by <span>Nicolas</span> <span>Alex</span> <span>Sam</span>
+      </h4>
+    </div>
+
+    <script>
+      function previewImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const img = document.getElementById("preview");
+            img.src = e.target.result;
+            img.style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      function sendImage() {
+        const fileInput = document.getElementById("imageInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert("Please upload an image!");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        fetch("/predict", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const resultDiv = document.getElementById("result");
+            if (data.error) {
+              resultDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+            } else {
+              resultDiv.innerHTML = `
+            <p><strong>Prediction:</strong> <span style="color:#00FFFF">${
+              data.prediction
+            }</span></p>
+            <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(
+              2
+            )}%</p>
+            <details><summary>All Probabilities</summary><pre>${JSON.stringify(
+              data.all_probs,
+              null,
+              2
+            )}</pre></details>
+          `;
+            }
+          })
+          .catch((err) => {
+            document.getElementById(
+              "result"
+            ).innerHTML = `<p style="color:red;">${err}</p>`;
+          });
+      }
+    </script>
+  </body>
+</html>
