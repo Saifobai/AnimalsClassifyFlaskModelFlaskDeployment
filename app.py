@@ -1,24 +1,24 @@
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU usage
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import io
 import numpy as np
 from flask import Flask, request, jsonify, render_template
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
+import tensorflow as tf
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# Path to model
-MODEL_PATH = "model/model_3.keras"
+# Load TFLite model
+interpreter = tf.lite.Interpreter(model_path="model/model_3.tflite")
+interpreter.allocate_tensors()
 
-# Load model once at startup with compile=False to reduce memory use
-model = load_model(MODEL_PATH, compile=False)
+# Get input & output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
-# Class names
 class_names = [
     "butterfly",
     "cat",
@@ -48,11 +48,13 @@ def predict():
         # Process the image
         image = Image.open(io.BytesIO(file.read())).convert("RGB")
         image = image.resize((64, 64))
-        image = img_to_array(image)
-        image = np.expand_dims(image, axis=0) / 255.0
+        image = np.expand_dims(np.array(image) / 255.0, axis=0).astype(np.float32)
 
-        # Run prediction
-        prediction = model.predict(image)[0]
+        # Run inference
+        interpreter.set_tensor(input_details[0]["index"], image)
+        interpreter.invoke()
+        prediction = interpreter.get_tensor(output_details[0]["index"])[0]
+
         top_index = int(np.argmax(prediction))
         result = {
             "prediction": class_names[top_index],
